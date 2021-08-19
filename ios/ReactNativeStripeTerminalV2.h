@@ -12,6 +12,7 @@
     SCPCancelable *collectCancelable;
     SCPCancelable *reusableCancelable;
     SCPCancelable *refundCancelable;
+    SCPCancelable *updateCancelable;
 
 
     NSArray<SCPReader *> *readers;

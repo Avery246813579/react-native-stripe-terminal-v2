@@ -10,6 +10,16 @@ NSString *const DogTest = @"FirstConstant";
 
 static dispatch_once_t onceToken = 0;
 
++ (BOOL)requiresMainQueueSetup
+{
+    return YES;
+}
+
+- (dispatch_queue_t)methodQueue
+{
+    return dispatch_get_main_queue();
+}
+
 RCT_EXPORT_MODULE()
 
 // Will be called when this module's first listener is added.
@@ -27,36 +37,16 @@ RCT_EXPORT_MODULE()
 - (NSArray<NSString *> *)supportedEvents {
     return @[
         @"log",
-        @"requestConnectionToken",
-        @"readersDiscovered",
-        @"readerSoftwareUpdateProgress",
-        @"readerDiscoveryCompletion",
-        @"readerDisconnectCompletion",
-        @"readerConnection",
-        @"updateCheck",
-        @"updateInstall",
-        @"paymentCreation",
-        @"paymentIntentCreation",
-        @"paymentIntentRetrieval",
-        @"paymentMethodCollection",
-        @"paymentProcess",
-        @"paymentIntentCancel",
-        @"didBeginWaitingForReaderInput",
-        @"didRequestReaderInput",
-        @"didRequestReaderDisplayMessage",
-        @"didReportReaderEvent",
-        @"didReportUnexpectedReaderDisconnect",
-        @"didReportLowBatteryWarning",
-        @"didChangePaymentStatus",
-        @"didChangeConnectionStatus",
-        @"didDisconnectUnexpectedlyFromReader",
-        @"connectedReader",
-        @"connectionStatus",
-        @"paymentStatus",
-        @"lastReaderEvent",
-        @"abortCreatePaymentCompletion",
-        @"abortDiscoverReadersCompletion",
-        @"abortInstallUpdateCompletion"
+        @"onRequestConnectionToken",
+        @"onReadersDiscovered",
+        
+        @"onReportUnexpectedReaderDisconnect",
+        @"onFinishInstallingUpdate",
+        @"onReportAvailableUpdate",
+        @"onReportReaderSoftwareUpdateProgress",
+        @"onRequestReaderDisplayMessage",
+        @"onRequestReaderInput",
+        @"onStartInstallingUpdate",
     ];
 }
 
@@ -64,17 +54,18 @@ RCT_REMAP_METHOD(setConnectionToken, setConnectionToken:(NSString *)token error:
     if (pendingConnectionTokenCompletionBlock) {
         if ([errorMessage length] != 0) {
             NSError* error = [NSError errorWithDomain:@"com.stripe-terminal.rn" code:1 userInfo:[NSDictionary dictionaryWithObject:errorMessage forKey:NSLocalizedDescriptionKey]];
+            
             pendingConnectionTokenCompletionBlock(nil, error);
-            NSLog(@"Fail");
+            
+            reject(@"FAIL_CONNECTION", @"Connection has failed", error);
         } else {
             pendingConnectionTokenCompletionBlock(token, nil);
-            NSLog(@"Success");
+            
+            resolve(token);
         }
 
         pendingConnectionTokenCompletionBlock = nil;
     }
-
-    return resolve(DogTest);
 }
 
 RCT_REMAP_METHOD(createPaymentIntent, amount:(NSUInteger) amount currency:(NSString*)currency paymentOptions:(NSDictionary *)options createPaymentIntent:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
@@ -134,7 +125,7 @@ RCT_REMAP_METHOD(createPaymentIntent, amount:(NSUInteger) amount currency:(NSStr
     }];
 }
 
-RCT_REMAP_METHOD(collectPaymentMethod, collectPaymentMethod:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+RCT_REMAP_METHOD(collectPaymentMethod, collectPaymentMethod:(RCTPromiseResolveBlock) resolve rejecter:(RCTPromiseRejectBlock) reject) {
     SCPReader* connectedReader = [[SCPTerminal shared] connectedReader];
     if (connectedReader == Nil) {
         return reject(@"READER NOT CONNECTED", @"YE GOT NO READER CONNECTED", Nil);
@@ -145,13 +136,15 @@ RCT_REMAP_METHOD(collectPaymentMethod, collectPaymentMethod:(RCTPromiseResolveBl
     }
     
     self->collectCancelable = [[SCPTerminal shared] collectPaymentMethod:intent completion:^(SCPPaymentIntent *collectResult, NSError *collectError) {
+        NSLog(@"Inside Collect Payment");
+        
         if (collectError) {
             NSLog(@"collectPaymentMethod failed: %@", collectError);
             reject(@"DONE GOOFED", @"SHE DONE GOOFED IT UP", collectError);
-        }
-        else {
+        } else {
             NSLog(@"collectPaymentMethod succeeded");
                         
+            self->intent = collectResult;
             resolve([self serializePaymentIntent:collectResult]);
             // ... Process the payment
         }
@@ -160,13 +153,13 @@ RCT_REMAP_METHOD(collectPaymentMethod, collectPaymentMethod:(RCTPromiseResolveBl
     }];
 }
 
-RCT_REMAP_METHOD(processPaymentIntent, processPaymentIntent:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+RCT_REMAP_METHOD(processPaymentIntent, processPaymentIntent:(RCTPromiseResolveBlock) resolve rejecter:(RCTPromiseRejectBlock) reject) {
     SCPReader* connectedReader = [[SCPTerminal shared] connectedReader];
     if (connectedReader == Nil) {
         return reject(@"READER NOT CONNECTED", @"YE GOT NO READER CONNECTED", Nil);
     }
 
-    NSLog(@"Start Process Payment Intent");
+    NSLog(@"Start Process Payment Intent %@", intent);
     
     [[SCPTerminal shared] processPayment:intent completion:^(SCPPaymentIntent *processResult, SCPProcessPaymentError *processError) {
         NSLog(@"INSIDE PROCESS PAYMENT");
@@ -214,7 +207,7 @@ RCT_REMAP_METHOD(readReusableCard, reuseOptions:(NSDictionary *)options readReus
         } else {
             NSLog(@"readReusableCard succeeded");
 
-            resolve(readResult);
+            resolve([self serializePaymentMethod:readResult]);
         }
         
         self->reusableCancelable = Nil;
@@ -235,7 +228,27 @@ RCT_REMAP_METHOD(cancelReadReusableCard, cancelReadReusableCard:(RCTPromiseResol
     }];
 }
 
+RCT_REMAP_METHOD(cancelInstallUpdate, cancelInstallUpdate:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    if (self->updateCancelable == Nil) {
+        return reject(@"OH_CRICKY", @"WE CANT CANCEL REUSE", Nil);
+    }
+    
+    [self->updateCancelable cancel:^(NSError * _Nullable error) {
+        if (error != nil) {
+            reject(@"OH_CRICKY", @"HOW", Nil);
+        } else {
+            resolve(nil);
+        }
+    }];
+}
+
+
 RCT_REMAP_METHOD(discoverReaders, discoverMethod:(NSUInteger) method locationIdentifier:(NSString *) locationID simulatorEnabled:(BOOL) isSimulated discoverReaders:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSLog(@"HERE DOG %@", self->discoverCancelable);
+    if ([[SCPTerminal self] connectedReader] != Nil) {
+        return reject(@"OH_CRICKY", @"READER IS ALREADY CONNECTED", Nil);
+    }
     
     if (self->discoverCancelable != Nil) {
         return reject(@"OH_CRICKY", @"YOU DONE GOOFED", Nil);
@@ -247,7 +260,7 @@ RCT_REMAP_METHOD(discoverReaders, discoverMethod:(NSUInteger) method locationIde
         NSLog(@"Dogs are really fun");
         
         if (error != nil) {
-            resolve(@"Fail");
+            reject(@"ERROR", @"Fail", error);
 
             NSLog(@"discoverReaders failed: %@", error);
         } else {
@@ -377,7 +390,7 @@ RCT_REMAP_METHOD(connectBluetoothReader, reader: (NSString *)serialNumber locati
     SCPConnectionStatus connectionStatus = [[SCPTerminal shared] connectionStatus];
     
     if (connectionStatus != SCPConnectionStatusNotConnected) {
-        return NSLog(@"We here bruv");
+        return reject(@"STATUS", @"TO COME", Nil);
     }
     
     unsigned long readerIndex = [readers indexOfObjectPassingTest:^(SCPReader *reader, NSUInteger idx, BOOL *stop) {
@@ -391,8 +404,10 @@ RCT_REMAP_METHOD(connectBluetoothReader, reader: (NSString *)serialNumber locati
     [[SCPTerminal shared] connectBluetoothReader:selectedReader delegate:self connectionConfig:connectionConfig completion:^(SCPReader *reader, NSError *error) {
         if (reader != nil) {
             NSLog(@"Successfully connected to reader: %@", reader);
+            resolve([self serializeReader:reader]);
         } else {
             NSLog(@"connectBluetoothReader failed: %@", error);
+            reject(@"OOF", @"@OOF", error);
         }
     }];
 }
@@ -425,7 +440,7 @@ RCT_REMAP_METHOD(disconnectReader, disconnectReader:(RCTPromiseResolveBlock) res
     SCPConnectionStatus connectionStatus = [[SCPTerminal shared] connectionStatus];
     
     if (connectionStatus != SCPConnectionStatusConnected) {
-        reject(@"DISCONENCT REJECT", @"CANT DISCONNECT IF YOU AINT EVER CONNECTED", Nil);
+        return reject(@"DISCONENCT REJECT", @"CANT DISCONNECT IF YOU AINT EVER CONNECTED", Nil);
     }
     
     [[SCPTerminal shared] disconnectReader:^(NSError * _Nullable error) {
@@ -445,9 +460,9 @@ RCT_REMAP_METHOD(initialize, initialize:(RCTPromiseResolveBlock)resolve rejecter
         [SCPTerminal setTokenProvider:self];
     });
     
-    [SCPTerminal setLogListener:^(NSString *str) {
-        NSLog(@"Stripe logs %@", str);
-    }];
+//    [SCPTerminal setLogListener:^(NSString *str) {
+//        NSLog(@"Stripe logs %@", str);
+//    }];
     
     resolve(@YES);
 }
@@ -456,10 +471,10 @@ RCT_REMAP_METHOD(initialize, initialize:(RCTPromiseResolveBlock)resolve rejecter
     pendingConnectionTokenCompletionBlock = completion;
     
     NSLog(@"Fetching Token");
-    [self sendEventWithName:@"requestConnectionToken" body:@{}];
+    [self sendEventWithName:@"onRequestConnectionToken" body:@{}];
 }
 
-- (void)terminal:(SCPTerminal *)terminal didUpdateDiscoveredReaders:(NSArray<SCPReader *>*)_readers {    
+- (void)terminal:(SCPTerminal *)terminal didUpdateDiscoveredReaders:(NSArray<SCPReader *>*)_readers {
     // Only connect if we aren't currently connected.
     
     readers = _readers;
@@ -469,35 +484,58 @@ RCT_REMAP_METHOD(initialize, initialize:(RCTPromiseResolveBlock)resolve rejecter
         [data addObject:[self serializeReader:reader]];
     }];
 
-    [self sendEventWithName:@"readersDiscovered" body:data];
+    [self sendEventWithName:@"onReadersDiscovered" body:data];
 }
 
 - (void)terminal:(nonnull SCPTerminal *)terminal didReportUnexpectedReaderDisconnect:(nonnull SCPReader *)reader {
-    NSLog(@"reader did die: %@", reader);
+    [self sendEventWithName:@"onReportUnexpectedReaderDisconnect" body:@{
+        @"reader": [self serializeReader:reader]
+    }];
 }
 
 - (void)reader:(nonnull SCPReader *)reader didFinishInstallingUpdate:(nullable SCPReaderSoftwareUpdate *)update error:(nullable NSError *)error {
-    NSLog(@"Finish Install Update");
+    [self sendEventWithName:@"onFinishInstallingUpdate" body:@{
+        @"reader": [self serializeReader:reader],
+        @"update": [self serializeReaderSoftwareUpdate:update]
+    }];
 }
 
 - (void)reader:(nonnull SCPReader *)reader didReportAvailableUpdate:(nonnull SCPReaderSoftwareUpdate *)update {
-    NSLog(@"Update Available %@ %@", update.deviceSoftwareVersion, @(update.estimatedUpdateTime));
+    [self sendEventWithName:@"onReportAvailableUpdate" body:@{
+        @"reader": [self serializeReader:reader],
+        @"update": [self serializeReaderSoftwareUpdate:update]
+    }];
 }
 
 - (void)reader:(nonnull SCPReader *)reader didReportReaderSoftwareUpdateProgress:(float)progress {
-    NSLog(@"Report Reader Software Update Progress %@", @(progress));
+    [self sendEventWithName:@"onReportReaderSoftwareUpdateProgress" body:@{
+        @"reader": [self serializeReader:reader],
+        @"progress": @(progress)
+    }];
 }
 
 - (void)reader:(nonnull SCPReader *)reader didRequestReaderDisplayMessage:(SCPReaderDisplayMessage)displayMessage {
-    NSLog(@"Request Reader Display Message");
+    [self sendEventWithName:@"onRequestReaderDisplayMessage" body:@{
+        @"reader": [self serializeReader:reader],
+        @"message": [SCPTerminal stringFromReaderDisplayMessage:displayMessage],
+    }];
 }
 
 - (void)reader:(nonnull SCPReader *)reader didRequestReaderInput:(SCPReaderInputOptions)inputOptions {
-    NSLog(@"Did Request Reader Input");
+    [self sendEventWithName:@"onRequestReaderInput" body:@{
+        @"reader": [self serializeReader:reader],
+        @"text": [SCPTerminal stringFromReaderInputOptions:inputOptions]
+    }];
 }
 
 - (void)reader:(nonnull SCPReader *)reader didStartInstallingUpdate:(nonnull SCPReaderSoftwareUpdate *)update cancelable:(nullable SCPCancelable *)cancelable {
-    NSLog(@"Start Install Update");
+    self->updateCancelable = cancelable;
+    
+    [self sendEventWithName:@"onStartInstallingUpdate" body:@{
+        @"reader": [self serializeReader:reader],
+        @"update": [self serializeReaderSoftwareUpdate:update]
+    }];
+
 }
 
 - (NSDictionary *) serializePaymentIntent:(SCPPaymentIntent *)intent {
@@ -511,7 +549,7 @@ RCT_REMAP_METHOD(initialize, initialize:(RCTPromiseResolveBlock)resolve rejecter
     }];
     
     return @{
-        @"stripeId": intent.stripeId,
+        @"id": intent.stripeId,
         @"created": intent.created,
         @"status": @(intent.status),
         @"amount": @(intent.amount),
@@ -521,12 +559,33 @@ RCT_REMAP_METHOD(initialize, initialize:(RCTPromiseResolveBlock)resolve rejecter
     };
 }
 
-- (NSDictionary *)serializeReader:(SCPReader *)reader {
+- (NSDictionary *) serializePaymentMethod:(SCPPaymentMethod *) method {
+    return @{
+        @"id": method.stripeId,
+        @"card": method.card,
+        @"created": method.created,
+        @"type": @(method.type),
+        @"customer": method.customer ? method.customer : @"",
+        @"metadata": method.metadata,
+    };
+}
+
+- (NSDictionary *) serializeReader:(SCPReader *) reader {
     return @{
         @"batteryLevel": reader.batteryLevel ? reader.batteryLevel : @(0),
         @"deviceType": @(reader.deviceType),
+        @"deviceTypeStr": [SCPTerminal stringFromDeviceType: reader.deviceType],
         @"serialNumber": reader.serialNumber ? reader.serialNumber : @"",
         @"deviceSoftwareVersion": reader.deviceSoftwareVersion ? reader.deviceSoftwareVersion : @""
+    };
+}
+
+- (NSDictionary *) serializeReaderSoftwareUpdate:(SCPReaderSoftwareUpdate *) update {
+    
+    return @{
+        @"requiredAt": update.requiredAt,
+        @"version": update.deviceSoftwareVersion,
+        @"estimatedUpdateTime": [SCPReaderSoftwareUpdate stringFromUpdateTimeEstimate:(SCPUpdateTimeEstimate)update.estimatedUpdateTime]
     };
 }
 

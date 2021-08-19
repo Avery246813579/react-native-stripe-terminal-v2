@@ -148,20 +148,19 @@ public class ReactNativeStripeTerminalV2Module extends ReactContextBaseJavaModul
 
     @ReactMethod
     public void collectPaymentIntent(Promise promise) {
-        Cancelable cancelable = Terminal.getInstance().collectPaymentMethod(paymentIntent,
-                new PaymentIntentCallback() {
-                    @Override
-                    public void onSuccess(@NonNull PaymentIntent _paymentIntent) {
-                        paymentIntent = _paymentIntent;
+        Cancelable cancelable = Terminal.getInstance().collectPaymentMethod(paymentIntent, new PaymentIntentCallback() {
+            @Override
+            public void onSuccess(@NonNull PaymentIntent _paymentIntent) {
+                paymentIntent = _paymentIntent;
 
-                        promise.resolve(serializePaymentIntent(_paymentIntent, "USD"));
-                    }
+                promise.resolve(serializePaymentIntent(_paymentIntent, "USD"));
+            }
 
-                    @Override
-                    public void onFailure(TerminalException exception) {
-                        // Placeholder for handling exception
-                    }
-                });
+            @Override
+            public void onFailure(TerminalException exception) {
+                // Placeholder for handling exception
+            }
+        });
     }
 
     @ReactMethod

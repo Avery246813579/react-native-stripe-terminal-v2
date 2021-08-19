@@ -21,6 +21,7 @@ const {
   refundCharge: _refundCharge,
   cancelRefundCharge: _cancelRefundCharge,
   disconnectReader: _disconnectReader,
+  cancelInstallUpdate: _cancelInstallUpdate,
 } = ReactNativeStripeTerminalV2;
 
 const listeners = new NativeEventEmitter(ReactNativeStripeTerminalV2);
@@ -31,15 +32,7 @@ export const DISCOVERY_METHOD = {
   INTERNET: 2,
 };
 
-export const DEVICE_TYPE = {
-  CHIPPER_2X: 0,
-  VERIFONE_P400: 1,
-  WISE_PAD_3: 2,
-  STRIPE_M2: 3,
-  WISE_POS_E: 4,
-};
-
-listeners.addListener("requestConnectionToken", async () => {
+listeners.addListener("onRequestConnectionToken", async () => {
   if (defaultOptions.fetchConnectionToken === null) {
     return console.log("Aww shucks");
   }
@@ -147,6 +140,10 @@ export async function readReusableCard(options = {}) {
 
 export async function cancelReadReusableCard() {
   return _cancelReadReusableCard();
+}
+
+export async function cancelInstallUpdate() {
+  return _cancelInstallUpdate();
 }
 
 export async function retrievePaymentIntent(payment) {

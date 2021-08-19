@@ -8,24 +8,27 @@
  * https://github.com/facebook/react-native
  */
 
-import React, {Component} from 'react';
-import {Button, StyleSheet, Text, View} from 'react-native';
+import React, {Component} from "react";
+import {Button, StyleSheet, Text, View} from "react-native";
 import {
   cancelDiscoverReaders,
   collectPaymentMethod,
   connectBluetoothReader,
-  createPaymentIntent, disconnectReader,
+  createPaymentIntent,
+  disconnectReader,
   discoverReaders,
   initialize,
-  processPaymentIntent, readReusableCard, refundCharge,
+  processPaymentIntent,
+  readReusableCard,
+  refundCharge,
   registerListener,
   retrievePaymentIntent,
-} from 'react-native-stripe-terminal-v2';
+} from "react-native-stripe-terminal-v2";
 
 export default class App extends Component<{}> {
   state = {
-    status: 'starting',
-    message: '--',
+    status: "starting",
+    message: "--",
   };
 
   componentDidMount() {
@@ -34,13 +37,13 @@ export default class App extends Component<{}> {
     // }
     this.setupReader();
 
-    registerListener('readersDiscovered', readers => {
+    registerListener("onReadersDiscovered", (readers) => {
       if (readers.length > 0) {
         connectBluetoothReader(readers[0].serialNumber, "tml_DzDeZgFF76H5lT")
-          .then(data => {
-            console.log('WE DID IT MOM');
+          .then((data) => {
+            console.log("WE DID IT MOM");
           })
-          .catch(err => {
+          .catch((err) => {
             console.log(err);
           });
       }
@@ -51,18 +54,18 @@ export default class App extends Component<{}> {
 
   fetchConnectionToken() {
     let headers = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+      "Content-Type": "application/json",
+      Accept: "application/json",
     };
 
-    return new Promise(resolve => {
-      fetch('https://api.dripdrinks.co/terminal/token', {
-        method: 'POST',
+    return new Promise((resolve) => {
+      fetch("https://api.dripdrinks.co/terminal/token", {
+        method: "POST",
         headers: headers,
       })
-        .then(response => response.json())
-        .then(responseJson => {
-          if (responseJson['success']) {
+        .then((response) => response.json())
+        .then((responseJson) => {
+          if (responseJson["success"]) {
             resolve(responseJson.data.secret);
           }
         });
@@ -73,10 +76,10 @@ export default class App extends Component<{}> {
     initialize({
       fetchConnectionToken: this.fetchConnectionToken.bind(this),
     })
-      .then(err => {
-        console.log('HERE2', err);
+      .then((err) => {
+        console.log("HERE2", err);
       })
-      .catch(err => {
+      .catch((err) => {
         console.log(err);
       });
   }
@@ -91,17 +94,17 @@ export default class App extends Component<{}> {
           title="Discover Readers"
           onPress={() =>
             discoverReaders({
-              simulated: false,
+              simulated: true,
             })
-              .then(data => {
+              .then((data) => {
                 console.log(data);
               })
-              .catch(err => {
+              .catch((err) => {
                 console.log(err);
 
-                if (err.code === 'OH_CRICKY') {
+                if (err.code === "OH_CRICKY") {
                   cancelDiscoverReaders().then(() => {
-                    console.log('WE CANCELLED');
+                    console.log("WE CANCELLED");
                   });
                 }
               })
@@ -113,11 +116,7 @@ export default class App extends Component<{}> {
           onPress={() =>
             createPaymentIntent({
               amount: 6969,
-              stripeDescription: 'test',
-              metadata: {
-                dog: "yes"
-              }
-            }).then(data => {
+            }).then((data) => {
               console.log(data);
             })
           }
@@ -127,8 +126,8 @@ export default class App extends Component<{}> {
           title="Retreive Payment Intent"
           onPress={() =>
             retrievePaymentIntent(
-              'pi_3JPqavAcqRxm04BK1XUXLQ89_secret_sQESXVyaebGPY5Cn6ZzUX8TFV',
-            ).then(data => {
+              "pi_3JPqavAcqRxm04BK1XUXLQ89_secret_sQESXVyaebGPY5Cn6ZzUX8TFV"
+            ).then((data) => {
               console.log(data);
             })
           }
@@ -137,7 +136,7 @@ export default class App extends Component<{}> {
         <Button
           title="Collect Payment Intent"
           onPress={() =>
-            collectPaymentMethod().then(data => {
+            collectPaymentMethod().then((data) => {
               console.log(data);
             })
           }
@@ -147,11 +146,11 @@ export default class App extends Component<{}> {
           title="Process Payment Intent"
           onPress={() =>
             processPaymentIntent()
-              .then(data => {
+              .then((data) => {
                 console.log(data);
               })
-              .catch(err => {
-                console.log('Process Payment Intent ERror', err);
+              .catch((err) => {
+                console.log("Process Payment Intent ERror", err);
               })
           }
         />
@@ -160,11 +159,11 @@ export default class App extends Component<{}> {
           title="Read Reusable Card"
           onPress={() =>
             readReusableCard({metadata: {cats: "cool"}})
-              .then(data => {
+              .then((data) => {
                 console.log("YES DAD", data);
               })
-              .catch(err => {
-                console.log('Read Reusable Error', err);
+              .catch((err) => {
+                console.log("Read Reusable Error", err);
               })
           }
         />
@@ -172,12 +171,14 @@ export default class App extends Component<{}> {
         <Button
           title="Refund Charge"
           onPress={() =>
-            refundCharge("", 1000, {metadata: {cats: "cool"}})
-              .then(data => {
+            refundCharge("ch_3JPzBeAcqRxm04BK1GYkzRpI", 1000, {
+              metadata: {cats: "cool"},
+            })
+              .then((data) => {
                 console.log("YES DAD", data);
               })
-              .catch(err => {
-                console.log('Read Reusable Error', err);
+              .catch((err) => {
+                console.log("Read Reusable Error", err);
               })
           }
         />
@@ -186,11 +187,11 @@ export default class App extends Component<{}> {
           title="Disconnect Reader"
           onPress={() =>
             disconnectReader()
-              .then(data => {
+              .then((data) => {
                 console.log("YES DAD", data);
               })
-              .catch(err => {
-                console.log('Disconenct Error', err);
+              .catch((err) => {
+                console.log("Disconenct Error", err);
               })
           }
         />
@@ -202,18 +203,18 @@ export default class App extends Component<{}> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5FCFF',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5FCFF",
   },
   welcome: {
     fontSize: 20,
-    textAlign: 'center',
+    textAlign: "center",
     margin: 10,
   },
   instructions: {
-    textAlign: 'center',
-    color: '#333333',
+    textAlign: "center",
+    color: "#333333",
     marginBottom: 5,
   },
 });
