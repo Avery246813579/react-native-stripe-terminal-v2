@@ -550,7 +550,7 @@ RCT_REMAP_METHOD(initialize, verboseLogs:(BOOL) verboseLogs initialize:(RCTPromi
 RCT_REMAP_METHOD(getConnectedReader, getConnectedReader:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
     SCPConnectionStatus connectionStatus = [[SCPTerminal shared] connectionStatus];
 
-    if (connectionStatus != SCPConnectionStatusNotConnected) {
+    if (connectionStatus == SCPConnectionStatusNotConnected) {
         return resolve(Nil);
     }
 

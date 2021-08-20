@@ -242,11 +242,23 @@ export async function cancelCollectPaymentMethod() {
 }
 
 export async function getConnectedReader() {
-  return _getConnectedReader();
+  const connectedReader = await _getConnectedReader();
+
+  if (connectedReader) {
+    return connectedReader;
+  }
+
+  return null;
 }
 
 export async function getPaymentIntent() {
-  return _getPaymentIntent();
+  const paymentIntent = await _getPaymentIntent();
+
+  if (paymentIntent) {
+    return paymentIntent;
+  }
+
+  return null;
 }
 
 export async function getPaymentStatus() {
