@@ -15,3 +15,7 @@ import ReactNativeStripeTerminalV2 from 'react-native-stripe-terminal-v2';
 // TODO: What to do with the module?
 ReactNativeStripeTerminalV2;
 ```
+
+## TODO
+- Check command in progress and throw error if doing a cancelable 
+- Get last command

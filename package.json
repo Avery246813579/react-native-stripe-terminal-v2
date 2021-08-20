@@ -1,8 +1,8 @@
 {
   "name": "react-native-stripe-terminal-v2",
   "title": "React Native Stripe Terminal V2",
-  "version": "1.0.0",
-  "description": "TODO",
+  "version": "0.0.1",
+  "description": "A package to bridge Stripe Terminal's iOS and Android SDKs w/ React Native",
   "main": "index.js",
   "files": [
     "README.md",
@@ -16,15 +16,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/github_account/react-native-stripe-terminal-v2.git",
-    "baseUrl": "https://github.com/github_account/react-native-stripe-terminal-v2"
+    "url": "git+https://github.com/avery246813579/react-native-stripe-terminal-v2.git",
+    "baseUrl": "https://github.com/avery246813579/react-native-stripe-terminal-v2"
   },
   "keywords": [
     "react-native"
   ],
   "author": {
-    "name": "Your Name",
-    "email": "yourname@email.com"
+    "name": "Avery Durrant",
+    "email": "avery@dripos.com"
   },
   "license": "MIT",
   "licenseFilename": "LICENSE",

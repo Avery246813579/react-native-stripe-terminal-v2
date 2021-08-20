@@ -22,6 +22,13 @@ const {
   cancelRefundCharge: _cancelRefundCharge,
   disconnectReader: _disconnectReader,
   cancelInstallUpdate: _cancelInstallUpdate,
+
+  cancelCurrentAction: _cancelCurrentAction,
+  cancelCollectPaymentMethod: _cancelCollectPaymentMethod,
+  getConnectedReader: _getConnectedReader,
+  getPaymentIntent: _getPaymentIntent,
+  getPaymentStatus: _getPaymentStatus,
+  getConnectionStatus: _getConnectionStatus,
 } = ReactNativeStripeTerminalV2;
 
 const listeners = new NativeEventEmitter(ReactNativeStripeTerminalV2);
@@ -34,12 +41,10 @@ export const DISCOVERY_METHOD = {
 
 listeners.addListener("onRequestConnectionToken", async () => {
   if (defaultOptions.fetchConnectionToken === null) {
-    return console.log("Aww shucks");
+    throw new Error("FETCH_CONNECTION_INVALID", "fetchConnectionToken has to be defined inside the initialize method");
   }
 
   const secret = await defaultOptions.fetchConnectionToken();
-
-  console.log("LE SECRET", secret);
 
   _setConnectionToken(secret, null);
 });
@@ -48,10 +53,24 @@ const defaultOptions = {
   fetchConnectionToken: null,
 };
 
-export async function initialize(options) {
-  defaultOptions.fetchConnectionToken = options.fetchConnectionToken;
+/**
+ *
+ * @param options
+ * @param options.fetchConnectionToken
+ * @param options.verboseLogs
+ *
+ * @return {Promise<*>}
+ */
+export async function initialize(options = {}) {
+  const {fetchConnectionToken = null, verboseLogs = false} = options;
 
-  return _initialize();
+  if (fetchConnectionToken === null) {
+    throw new Error("FETCH_CONNECTION_INVALID", "fetchConnectionToken has to be defined inside the initialize method");
+  }
+
+  defaultOptions.fetchConnectionToken = fetchConnectionToken;
+
+  return _initialize(verboseLogs);
 }
 
 export async function checkPermissions() {
@@ -208,6 +227,30 @@ export async function discoverReaders(params) {
   return _discoverReaders(method, locationId, simulated);
 }
 
-export function registerListener(key, method) {
-  listeners.addListener(key, method);
+export async function cancelCurrentAction() {
+  return _cancelCurrentAction();
+}
+
+export async function cancelCollectPaymentMethod() {
+  return _cancelCollectPaymentMethod();
+}
+
+export async function getConnectedReader() {
+  return _getConnectedReader();
+}
+
+export async function getPaymentIntent() {
+  return _getPaymentIntent();
+}
+
+export async function getPaymentStatus() {
+  return _getPaymentStatus();
+}
+
+export async function getConnectionStatus() {
+  return _getConnectionStatus();
+}
+
+export function registerTerminalListener(key, method) {
+  return listeners.addListener(key, method);
 }
