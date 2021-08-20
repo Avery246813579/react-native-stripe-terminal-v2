@@ -29,6 +29,8 @@ const {
   getPaymentIntent: _getPaymentIntent,
   getPaymentStatus: _getPaymentStatus,
   getConnectionStatus: _getConnectionStatus,
+
+  cancelPaymentIntent: _cancelPaymentIntent,
 } = ReactNativeStripeTerminalV2;
 
 const listeners = new NativeEventEmitter(ReactNativeStripeTerminalV2);
@@ -239,6 +241,10 @@ export async function cancelCurrentAction() {
 
 export async function cancelCollectPaymentMethod() {
   return _cancelCollectPaymentMethod();
+}
+
+export async function cancelPaymentIntent() {
+  return _cancelPaymentIntent();
 }
 
 export async function getConnectedReader() {
