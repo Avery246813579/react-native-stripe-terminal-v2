@@ -69,7 +69,7 @@ export default class App extends Component<{}> {
     };
 
     return new Promise((resolve) => {
-      fetch("https://api.dripdrinks.co/terminal/token", {
+      fetch("http://localhost:6969/terminal/token", {
         method: "POST",
         headers: headers,
       })
