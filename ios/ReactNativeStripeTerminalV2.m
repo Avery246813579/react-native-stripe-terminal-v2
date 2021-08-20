@@ -193,11 +193,17 @@ RCT_REMAP_METHOD(processPaymentIntent, processPaymentIntent:(RCTPromiseResolveBl
         if (processError) {
             NSLog(@"processPayment failed: %@", processError);
 
-            reject(EXECUTE_ACTION_ERROR, @"An error occured while trying to execute processPaymentIntent", processError);
+            resolve(@{
+                @"error": processError.localizedDescription,
+                @"code": @(processError.code),
+                @"declineCode": processError.declineCode ? processError.declineCode : @""
+            });
         } else {
             NSLog(@"processPayment succeeded");
             
-            resolve([self serializePaymentIntent:processResult]);
+            resolve(@{
+                @"intent": [self serializePaymentIntent:processResult]
+            });
             
             self->intent = Nil;
             // Notify your backend to capture the PaymentIntent
@@ -654,7 +660,7 @@ RCT_REMAP_METHOD(getConnectionStatus, getConnectionStatus:(RCTPromiseResolveBloc
             @"amount": @(charge.amount)
         })];
     }];
-    
+        
     return @{
         @"id": intent.stripeId,
         @"created": intent.created,

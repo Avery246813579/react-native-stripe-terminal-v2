@@ -174,7 +174,13 @@ export async function collectPaymentMethod(options) {
 }
 
 export async function processPaymentIntent() {
-  return _processPaymentIntent();
+  const processResponse = await _processPaymentIntent();
+
+  if (processResponse.error) {
+    return Promise.reject(processResponse);
+  }
+
+  return processResponse.intent;
 }
 
 export async function connectBluetoothReader(reader, location) {

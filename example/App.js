@@ -52,6 +52,14 @@ export default class App extends Component<{}> {
 
       console.log(readers);
     });
+
+    registerTerminalListener("onRequestReaderDisplayMessage", (data) => {
+      console.log("onRequestReaderDisplayMessage", data);
+    });
+
+    registerTerminalListener("onRequestReaderInput", (data) => {
+      console.log("onRequestReaderInput", data);
+    });
   }
 
   fetchConnectionToken() {
@@ -98,7 +106,7 @@ export default class App extends Component<{}> {
             title="Discover Readers"
             onPress={() =>
               discoverReaders({
-                simulated: true,
+                simulated: false,
               })
                 .then((data) => {
                   console.log(data);
@@ -166,7 +174,7 @@ export default class App extends Component<{}> {
                   console.log("Process Payment Intent", data);
                 })
                 .catch((err) => {
-                  console.log("Process Payment Intent Error", err);
+                  console.log("Process Payment Intent Error", JSON.parse(JSON.stringify(err)));
                 })
             }
           />
